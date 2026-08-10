@@ -33,7 +33,7 @@ async function main() {
   // ===== 2. 再種 STUDENT（接上 class）=====
   // ===== 3. 最後種 GRADE（接上 student + subject）=====
 
-  // 1. 取得四個 repo（用 entity name，注意大小寫）
+  // 1. 取得四個 repo
   const classRepo   = dataSource.getRepository('Class')
   const subjectRepo = dataSource.getRepository('Subject')
   const studentRepo = dataSource.getRepository('Student')
@@ -58,7 +58,7 @@ async function main() {
     { name: '小華', class: classes[1] },
   ])
 
-  // 4. 最後存 GRADE，每筆接上 student 與 subject（放物件本身）
+  // 4. 最後存 GRADE，每筆接上 student 與 subject
   //    score 是 integer（整數），不要給字串
   //    students / subjects 是陣列，用索引取值
   await gradeRepo.save([
