@@ -9,7 +9,14 @@ const { dataSource } = require('./data-source')
  *  不用 clear()（TRUNCATE 會被 FK 擋）、不用 delete({})（TypeORM 拒絕空條件）。 */
 async function clearAll() {
   const ORDER = [
-    // TODO: 按「你的」FK 依賴順序填 entity name（先刪 Grade，再 Student，最後 Class / Subject）
+    // FK 依賴反向 — 被指到的表先刪，源頭表最後刪
+    //  GRADE 有 student_id → STUDENT、subject_id → SUBJECT，先刪
+    //  STUDENT 有 class_id → CLASS，接著刪
+    //  CLASS / SUBJECT 沒人指它們，最後刪
+    'Grade',
+    'Student',
+    'Class',
+    'Subject',
   ]
   for (const name of ORDER) {
     if (dataSource.hasMetadata(name)) {
@@ -22,15 +29,44 @@ async function main() {
   await dataSource.initialize()
   await clearAll()
 
-  // ================================================================================
-  // TODO：依照任務內容的規格種資料（至少 2 班、2 科目、幾位學生、幾筆成績）
-  //   1. 先種 CLASS / SUBJECT
-  //   2. 再種 STUDENT（記得接上 class）
-  //   3. 最後種 GRADE（記得接上 student + subject）
-  //      關聯的接法：relation 屬性直接放前面存好的物件（TypeORM 會自動取出 id 填進外鍵），例如：
-  //      studentRepo.save({ name: '...', class: 班級物件 })
-  //      gradeRepo.save({ score: 95, student: 學生物件, subject: 科目物件 })
-  // ================================================================================
+  // ===== 1. 先種 CLASS / SUBJECT（沒有 FK，可獨立存在）=====
+  // ===== 2. 再種 STUDENT（接上 class）=====
+  // ===== 3. 最後種 GRADE（接上 student + subject）=====
+
+  // 1. 取得四個 repo（用 entity name，注意大小寫）
+  const classRepo   = dataSource.getRepository('Class')
+  const subjectRepo = dataSource.getRepository('Subject')
+  const studentRepo = dataSource.getRepository('Student')
+  const gradeRepo   = dataSource.getRepository('Grade')
+
+  // 2. 先存 CLASS、SUBJECT → 存回變數，後面 STUDENT / GRADE 要用
+  //    save 回傳的物件已含自動生成的 id
+  const classes = await classRepo.save([
+    { name: '一年甲班' },
+    { name: '一年乙班' },
+  ])
+
+  const subjects = await subjectRepo.save([
+    { name: '數學' },
+    { name: '國文' },
+  ])
+
+  // 3. 再存 STUDENT，每位接上一個 class（放班級物件）
+  //    classes 是陣列，用索引取值
+  const students = await studentRepo.save([
+    { name: '小明', class: classes[0] },
+    { name: '小華', class: classes[1] },
+  ])
+
+  // 4. 最後存 GRADE，每筆接上 student 與 subject（放物件本身）
+  //    score 是 integer（整數），不要給字串
+  //    students / subjects 是陣列，用索引取值
+  await gradeRepo.save([
+    { score: 90, student: students[0], subject: subjects[0] },
+    { score: 85, student: students[0], subject: subjects[1] },
+    { score: 78, student: students[1], subject: subjects[0] },
+    { score: 92, student: students[1], subject: subjects[1] },
+  ])
 
   console.log('🌱 seed 完成')
   await dataSource.destroy()
