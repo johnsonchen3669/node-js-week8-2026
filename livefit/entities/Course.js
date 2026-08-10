@@ -10,6 +10,7 @@ module.exports = new EntitySchema({
     start_at: { type: 'timestamp', nullable: false },
     end_at: { type: 'timestamp', nullable: false },
     max_participants: { type: 'integer', nullable: false },
+    meeting_url: { type: 'varchar', length: 2048, nullable: true },
     created_at: { type: 'timestamp', createDate: true },
     updated_at: { type: 'timestamp', updateDate: true },
   },
